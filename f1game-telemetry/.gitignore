@@ -1,0 +1,36 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyd
+*.so
+
+# Environments
+.env
+venv/
+env/
+
+# Database
+db.sqlite3
+*.sqlite3
+
+# Media and uploaded files (if you had any)
+/media/
+
+# IDE specific files
+.idea/  # IntelliJ IDEA / PyCharm
+.vscode/ # VS Code
+*.sublime-project
+*.sublime-workspace
+
+# Operating System files
+.DS_Store # macOS
+Thumbs.db # Windows
+
+# Django specific files
+*.log
+*.pot
+*.mo
+*.js.map
+
+# Data files (recorded telemetry logs)
+/data/ # Bu klasörün tamamını ignore ediyoruz çünkü büyük ve dinamik veri içerir

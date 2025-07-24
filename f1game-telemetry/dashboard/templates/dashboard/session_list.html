@@ -1,0 +1,27 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Yarış Seansları{% endblock %}
+
+{% block content %}
+    <h1>Kaydedilmiş Yarış Seansları</h1>
+
+    <style>
+        /* Bu sayfaya özel stiller burada kalabilir */
+        ul { list-style-type: none; padding: 0; }
+        li { background-color: var(--card-dark); margin-bottom: 10px; padding: 15px; border-radius: 5px; border: 1px solid var(--border-color); }
+    </style>
+
+    <ul>
+        {% for session in sessions %}
+            <li>
+                <a href="{% url 'session_detail' session_uid=session.session_uid %}">
+                    Seans ID: {{ session.session_uid }} | 
+                    Pist ID: {{ session.track_id | default:"Bilinmiyor" }} | 
+                    Tarih: {{ session.created_at|date:"d M Y H:i" }}
+                </a>
+            </li>
+        {% empty %}
+            <li>Henüz kaydedilmiş bir seans bulunamadı.</li>
+        {% endfor %}
+    </ul>
+{% endblock %}

@@ -1,0 +1,220 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Ana Panel{% endblock %}
+
+{% block content %}
+    <h1>Genel Dashboard</h1>
+
+    <style>
+        /* Mevcut CSS stillerini koru */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .stat-card {
+            background-color: var(--card-dark);
+            padding: 25px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-card h3 {
+            color: var(--text-primary);
+            font-size: 1.8em;
+            margin-bottom: 10px;
+        }
+
+        .stat-card p {
+            color: var(--text-secondary);
+            font-size: 1.1em;
+            margin: 0;
+        }
+
+        .stat-card .label {
+            font-size: 0.9em;
+            color: rgba(220, 220, 220, 0.7);
+            margin-top: 5px;
+        }
+
+        .chart-and-list-container {
+            display: grid;
+            grid-template-columns: 2fr 1fr; /* Grafik 2/3, liste 1/3 yer kaplasın */
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .chart-container {
+            background-color: var(--card-dark);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        .chart-wrapper {
+            position: relative;
+            height: 350px; 
+        }
+
+        .track-list-container {
+            background-color: var(--card-dark);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        .track-list-container h2 {
+            margin-top: 0; 
+        }
+        .track-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        .track-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .track-list li:last-child {
+            border-bottom: none; 
+        }
+        .track-list .track-name {
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+        .track-list .session-count {
+            color: var(--text-primary);
+            font-weight: 700;
+        }
+
+    </style>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3>{{ total_sessions }}</h3>
+            <p class="label">Toplam Seans</p>
+        </div>
+        <div class="stat-card">
+            <h3>{{ total_laps }}</h3>
+            <p class="label">Toplam Tur</p>
+        </div>
+        <div class="stat-card">
+            <h3>{{ total_telemetry_points }}</h3>
+            <p class="label">Toplam Telemetri Noktası</p>
+        </div>
+        <div class="stat-card">
+            <h3>{{ fastest_lap_overall_str }}</h3>
+            <p class="label">En Hızlı Tur (Tüm Zamanlar)</p>
+        </div>
+        <div class="stat-card">
+            <h3>{{ avg_speed }} km/s</h3>
+            <p class="label">Ortalama Hız</p>
+        </div>
+        <div class="stat-card">
+            <h3>{{ most_played_track_name }}</h3>
+            <p class="label">En Çok Yarışılan Pist</p>
+        </div>
+    </div>
+
+    <div class="chart-and-list-container">
+        <div class="chart-container">
+            <h2>Pistlere Göre Seans Dağılımı</h2>
+            <div class="chart-wrapper">
+                <canvas id="trackDistributionChart"></canvas>
+            </div>
+        </div>
+
+        <div class="track-list-container">
+            <h2>Sıralı Pistler</h2>
+            <ul class="track-list">
+                {% for item in track_list_data %} {# track_list_data üzerinde döngü #}
+                    <li>
+                        <span class="track-name">{{ item.name }}</span> {# item.name ile pist adını al #}
+                        <span class="session-count">{{ item.count }} Kez</span> {# item.count ile seans sayısını al #}
+                    </li>
+                {% empty %} {# Eğer liste boşsa #}
+                    <li>Henüz pist verisi bulunamadı.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    {# Chart.js için veri aktarımı (JavaScript hala bunlara ihtiyaç duyuyor) #}
+    {{ track_distribution_labels|json_script:"track-labels" }}
+    {{ track_distribution_counts|json_script:"track-counts" }}
+
+{% endblock %}
+
+{% block extra_js %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Chart.js için ortak seçenekler (mevcut koddan aynı)
+        const commonChartOptions = {
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    ticks: { color: 'rgba(220, 220, 220, 0.8)' },
+                    grid: { color: 'rgba(220, 220, 220, 0.1)' },
+                    title: { display: true, text: 'Pist Adı', color: '#dcdcdc' }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: 'rgba(220, 220, 220, 0.8)' },
+                    grid: { color: 'rgba(220, 220, 220, 0.1)' },
+                    title: { display: true, text: 'Seans Sayısı', color: '#dcdcdc' }
+                }
+            },
+            plugins: {
+                legend: {
+                    labels: {
+                        color: 'rgba(220, 220, 220, 0.9)'
+                    }
+                }
+            }
+        };
+
+        // Pistlere Göre Seans Dağılımı Grafiği (mevcut koddan aynı)
+        const trackLabels = JSON.parse(document.getElementById('track-labels').textContent);
+        const trackCounts = JSON.parse(document.getElementById('track-counts').textContent);
+
+        if (trackLabels.length > 0 && trackCounts.length > 0) {
+            const trackCtx = document.getElementById('trackDistributionChart').getContext('2d');
+            new Chart(trackCtx, {
+                type: 'bar',
+                data: {
+                    labels: trackLabels,
+                    datasets: [{
+                        label: 'Seans Sayısı',
+                        data: trackCounts,
+                        backgroundColor: 'rgba(75, 192, 192, 0.6)', 
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    ...commonChartOptions,
+                    plugins: {
+                        ...commonChartOptions.plugins,
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + context.parsed.y;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+{% endblock %}

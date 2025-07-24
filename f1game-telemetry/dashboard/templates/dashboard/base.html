@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}F1 Telemetry Dashboard{% endblock %}</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+    <style>
+        :root {
+            --bg-dark: #1a1a2e;
+            --sidebar-dark: #16213e;
+            --card-dark: #27293d;
+            --text-primary: #e94560;
+            --text-secondary: #dcdcdc;
+            --border-color: rgba(255, 255, 255, 0.1);
+        }
+        body { 
+            font-family: 'Poppins', sans-serif; 
+            background-color: var(--bg-dark); 
+            color: var(--text-secondary);
+            margin: 0;
+            display: flex;
+        }
+        .sidebar {
+            width: 250px;
+            background-color: var(--sidebar-dark);
+            height: 100vh;
+            padding: 20px 0;
+            position: fixed;
+        }
+        .sidebar h2 {
+            color: #fff;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 1.5em;
+        }
+        .sidebar ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .sidebar ul li a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            display: block;
+            padding: 15px 30px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .sidebar ul li a:hover, .sidebar ul li a.active {
+            background-color: var(--text-primary);
+            color: #fff;
+        }
+        .sidebar ul li a .fa-solid {
+            margin-right: 10px;
+        }
+        .main-content {
+            margin-left: 250px;
+            padding: 40px;
+            width: calc(100% - 250px);
+        }
+        h1 { color: var(--text-primary); }
+    </style>
+</head>
+<body>
+    <nav class="sidebar">
+        <h2><i class="fa-solid fa-flag-checkered"></i> F1 Telemetry</h2>
+        <ul>
+            <li><a href="{% url 'dashboard' %}"><i class="fa-solid fa-table-columns"></i> Dashboard</a></li>
+            <li><a href="{% url 'session_list' %}"><i class="fa-solid fa-list-ul"></i> Yarış Seansları</a></li>
+            </ul>
+    </nav>
+
+    <main class="main-content">
+        {% block content %}
+        {% endblock %}
+    </main>
+
+</body>
+</html>
