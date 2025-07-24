@@ -69,6 +69,10 @@ class TelemetryData(models.Model):
     # Anlık vites (-1: Geri, 0: Nötr, 1-8: İleri). Bu alanı null=True yaptık.
     gear = models.IntegerField(null=True, blank=True) 
 
+    # Depodaki anlık yakıt miktarı (kg). Her telemetri anında bu veri olmayacağı için
+    fuel_in_tank = models.FloatField(null=True, blank=True)
+
+
     class Meta:
         ordering = ['session_time'] # Zaman sırasına göre sırala
 

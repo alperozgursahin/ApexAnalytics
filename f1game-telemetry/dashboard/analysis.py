@@ -82,6 +82,20 @@ class SessionAnalyzer:
             })
         return telemetry_data
     
+    def get_fuel_data_for_session(self):
+        """Tüm seans boyunca yakıt verisini veritabanından çeker."""
+        if not self.session_obj: return []
+        
+        # Sadece `fuel_in_tank` alanı dolu olan kayıtları, zaman ve yakıt değeri olarak çekiyoruz.
+        # .values() kullanmak, sadece ihtiyacımız olan sütunları alarak sorguyu daha verimli hale getirir.
+        fuel_data = TelemetryData.objects.filter(
+            session=self.session_obj, 
+            fuel_in_tank__isnull=False
+        ).order_by('session_time').values('session_time', 'fuel_in_tank')
+        print(f"Yakıt verisi: {list(fuel_data)}")  # Debug için yazdırıyoruz
+        
+        return list(fuel_data)
+    
     def run_full_analysis(self):
         """Tüm analizleri çalıştırır ve sonuçları bir sözlükte toplar."""
         if not self.session_obj:
@@ -98,5 +112,6 @@ class SessionAnalyzer:
             'lap_times_chart_data': self.all_laps,
             'telemetry_chart_data': self.get_telemetry_for_fastest_lap(),
             'fastest_lap_str': fastest_lap_str,
+            'fuel_chart_data': self.get_fuel_data_for_session(),
             'error': None
         }
