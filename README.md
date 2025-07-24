@@ -1,0 +1,2 @@
+# ApexAnalytics
+Apex Analytics is a web-based platform that captures, stores, and visualizes real-time telemetry data from the F1 2024 game. Developed in Python (Django), the project analyzes race data to provide performance insights. By storing critical data such as laps and telemetry in structured models while archiving raw packets, it aims to be a comprehensive and extensible analytics tool for racing simulation enthusiasts.
