@@ -2,12 +2,42 @@
 from django.db import models
 
 class RaceSession(models.Model):
+    # --- YENİ EKLENEN SEÇENEKLER ---
+    SESSION_TYPE_CHOICES = [
+        (0, 'Bilinmiyor'),
+        (1, 'Antrenman 1'),
+        (2, 'Antrenman 2'),
+        (3, 'Antrenman 3'),
+        (4, 'Kısa Antrenman'),
+        (5, 'Sıralama 1'),
+        (6, 'Sıralama 2'),
+        (7, 'Sıralama 3'),
+        (8, 'Kısa Sıralama'),
+        (9, 'Tek Turlu Sıralama'),
+        (10, 'Sprint Shootout 1'),
+        (11, 'Sprint Shootout 2'),
+        (12, 'Sprint Shootout 3'),
+        (13, 'Kısa Sprint Shootout'),
+        (14, 'Tek Turlu Sprint Shootout'),
+        (15, 'Yarış'),
+        (16, 'Yarış 2'),
+        (17, 'Yarış 3'),
+        (18, 'Zamana Karşı'),
+    ]
     # Oyun tarafından sağlanan benzersiz seans kimliği. CharField olarak tutuyoruz
     # çünkü bu ID çok büyük bir sayı olabilir.
     session_uid = models.CharField(max_length=25, primary_key=True, unique=True)
     
     # Seansın gerçekleştiği pistin oyun içi ID'si
     track_id = models.IntegerField(null=True, blank=True)
+
+    session_type = models.IntegerField(
+        choices=SESSION_TYPE_CHOICES, 
+        default=0, 
+        null=True, 
+        blank=True,
+        help_text="Seansın türü (Antrenman, Sıralama, Yarış vb.)"
+    )
     
     # Seansın veritabanına kaydedildiği zaman (otomatik olarak atanır)
     created_at = models.DateTimeField(auto_now_add=True)

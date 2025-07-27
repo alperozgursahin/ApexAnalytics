@@ -38,7 +38,7 @@ class Command(BaseCommand):
                 if player_car_index is None:
                     continue
 
-                self._update_track_id(packets, session)
+                self._update_session_info(packets, session)
                 self._save_raw_packets(packets, session)
                 laps_info = self._process_laps(packets, session, player_car_index)
                 
@@ -55,14 +55,28 @@ class Command(BaseCommand):
         if packets: return packets[0].get('m_header', {}).get('m_player_car_index')
         return None
 
-    def _update_track_id(self, packets, session):
+    def _update_session_info(self, packets, session):
+        """
+        Seans paketini (ID=1) bulur ve hem track_id hem de session_type
+        alanlarını günceller.
+        """
         for p in packets:
             if p.get('m_header', {}).get('m_packet_id') == 1:
                 track_id = p.get('m_track_id')
-                if track_id is not None and (session.track_id is None or session.track_id != track_id):
+                session_type = p.get('m_session_type') # <-- YENİ
+                
+                updated = False
+                if track_id is not None and session.track_id != track_id:
                     session.track_id = track_id
+                    updated = True
+                
+                if session_type is not None and session.session_type != session_type:
+                    session.session_type = session_type # <-- YENİ
+                    updated = True
+
+                if updated:
                     session.save()
-                    self.stdout.write(self.style.NOTICE(f'  -> Pist ID güncellendi: {track_id}'))
+                    self.stdout.write(self.style.NOTICE(f'  -> Seans bilgileri güncellendi (Pist: {track_id}, Tür: {session_type})'))
                 return
 
     def _save_raw_packets(self, packets, session):

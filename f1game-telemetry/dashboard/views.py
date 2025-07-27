@@ -39,7 +39,8 @@ TRACK_NAMES = {
     28: "Portimao", # F1 2020+
     29: "Jeddah", # F1 2021+
     30: "Miami", # F1 2022+
-    31: "Las Vegas", # F1 2023+
+    31: "Las Vegas",
+    32: "Losail" # F1 2023+
     # Diğer pistler için ID'leri buradan kontrol edebilirsin:
     # https://docs.google.com/spreadsheets/d/1Xy4Z6h1N4qP8_4_z1_hK0Q_N_X-f5D4j3-jN5_g5D5w/edit#gid=0 (F1 2023 UDP spec referansı)
     # F1 2024 için güncel bir liste bulunamıyorsa bu liste başlangıç için yeterlidir.
@@ -116,11 +117,29 @@ def dashboard_view(request):
 
 def session_list_view(request):
     """
-    Veritabanındaki tüm yarış seanslarını listeleyen bir view.
+    Veritabanındaki tüm yarış seanslarını, filtreleme özellikleriyle listeleyen bir view.
     """
-    all_sessions = RaceSession.objects.all()
+    # Başlangıçta tüm seansları alıyoruz
+    queryset = RaceSession.objects.all().order_by('-created_at')
+    
+    # GET request'ten gelen filtre parametrelerini alıyoruz
+    selected_track = request.GET.get('track_id', '')
+    selected_type = request.GET.get('session_type', '')
+
+    # Eğer bir pist seçilmişse ve sayısal bir değerse, queryset'i filtrele
+    if selected_track and selected_track.isdigit():
+        queryset = queryset.filter(track_id=int(selected_track))
+
+    # Eğer bir seans türü seçilmişse ve sayısal bir değerse, queryset'i filtrele
+    if selected_type and selected_type.isdigit():
+        queryset = queryset.filter(session_type=int(selected_type))
+
     context = {
-        'sessions': all_sessions,
+        'sessions': queryset,
+        'track_names': TRACK_NAMES, # Pist dropdown'ı için
+        'session_types': RaceSession.SESSION_TYPE_CHOICES, # Tür dropdown'ı için
+        'selected_track': selected_track, # Seçili değeri template'te göstermek için
+        'selected_type': selected_type,   # Seçili değeri template'te göstermek için
     }
     return render(request, 'dashboard/session_list.html', context)
 

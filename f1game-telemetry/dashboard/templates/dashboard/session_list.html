@@ -1,27 +1,184 @@
 {% extends 'dashboard/base.html' %}
+{% load dashboard_extras %}
 
 {% block title %}Yarış Seansları{% endblock %}
 
 {% block content %}
-    <h1>Kaydedilmiş Yarış Seansları</h1>
+<style>
+    /* Bu sayfaya özel stiller */
+    :root {
+        --card-bg: #27293d;
+        --card-border: rgba(255, 255, 255, 0.1);
+        --card-hover-border: var(--text-primary);
+        --text-muted: #8c8c8e;
+    }
 
-    <style>
-        /* Bu sayfaya özel stiller burada kalabilir */
-        ul { list-style-type: none; padding: 0; }
-        li { background-color: var(--card-dark); margin-bottom: 10px; padding: 15px; border-radius: 5px; border: 1px solid var(--border-color); }
-    </style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
 
-    <ul>
-        {% for session in sessions %}
-            <li>
-                <a href="{% url 'session_detail' session_uid=session.session_uid %}">
-                    Seans ID: {{ session.session_uid }} | 
-                    Pist ID: {{ session.track_id | default:"Bilinmiyor" }} | 
-                    Tarih: {{ session.created_at|date:"d M Y H:i" }}
-                </a>
-            </li>
-        {% empty %}
-            <li>Henüz kaydedilmiş bir seans bulunamadı.</li>
-        {% endfor %}
-    </ul>
+    .filter-form {
+        background-color: var(--card-bg);
+        padding: 20px 25px;
+        border-radius: 12px;
+        margin-bottom: 30px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 25px;
+        align-items: flex-end; /* Öğeleri alta hizala */
+        border: 1px solid var(--card-border);
+    }
+
+    .filter-form .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .filter-form label {
+        font-weight: 500;
+        margin-bottom: 8px;
+        font-size: 0.9em;
+        color: var(--text-secondary);
+    }
+
+    .filter-form select {
+        padding: 10px 15px;
+        border-radius: 8px;
+        border: 1px solid var(--card-border);
+        background-color: var(--bg-dark);
+        color: var(--text-secondary);
+        font-family: 'Poppins', sans-serif;
+        font-size: 1em;
+        min-width: 200px;
+    }
+
+    .filter-form .reset-link {
+        color: var(--text-muted);
+        text-decoration: underline;
+        margin-bottom: 10px; /* Select ile aynı hizada durması için */
+        transition: color 0.2s;
+    }
+    .filter-form .reset-link:hover {
+        color: var(--text-secondary);
+    }
+
+    .session-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+        gap: 25px;
+    }
+
+    .session-card {
+        background-color: var(--card-bg);
+        border-radius: 12px;
+        border: 1px solid var(--card-border);
+        text-decoration: none;
+        color: var(--text-secondary);
+        transition: transform 0.2s ease-in-out, border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        display: block;
+        overflow: hidden; /* İçerideki border-top taşmasın diye */
+    }
+
+    .session-card:hover {
+        transform: translateY(-5px);
+        border-color: var(--card-hover-border);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .session-card-content {
+        padding: 25px;
+    }
+    
+    .session-card .track-name {
+        font-size: 1.6em;
+        font-weight: 600;
+        color: #fff;
+        margin: 0 0 5px 0;
+    }
+
+    .session-card .session-type {
+        font-size: 1.1em;
+        color: var(--text-primary);
+        font-weight: 500;
+        margin: 0 0 20px 0;
+    }
+
+    .session-card .session-meta {
+        font-size: 0.9em;
+        color: var(--text-muted);
+        border-top: 1px solid var(--card-border);
+        padding-top: 15px;
+        margin-top: 15px;
+        display: flex;
+        justify-content: space-between;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 50px;
+        background-color: var(--card-bg);
+        border-radius: 12px;
+        border: 1px dashed var(--card-border);
+    }
+
+</style>
+
+<div class="page-header">
+    <h1>Yarış Seansları</h1>
+</div>
+
+<form method="GET" action="{% url 'session_list' %}" class="filter-form">
+    <div class="form-group">
+        <label for="track_id">Piste Göre Filtrele</label>
+        <select name="track_id" id="track_id" onchange="this.form.submit()">
+            <option value="">Tüm Pistler</option>
+            {% for track_id, track_name in track_names.items %}
+                {% if track_id != -1 %}
+                <option value="{{ track_id }}" {% if selected_track == track_id|stringformat:"s" %}selected{% endif %}>
+                    {{ track_name }}
+                </option>
+                {% endif %}
+            {% endfor %}
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="session_type">Türe Göre Filtrele</label>
+        <select name="session_type" id="session_type" onchange="this.form.submit()">
+            <option value="">Tüm Türler</option>
+            {% for type_id, type_name in session_types %}
+                {% if type_id != 0 %}
+                <option value="{{ type_id }}" {% if selected_type == type_id|stringformat:"s" %}selected{% endif %}>
+                    {{ type_name }}
+                </option>
+                {% endif %}
+            {% endfor %}
+        </select>
+    </div>
+    <a href="{% url 'session_list' %}" class="reset-link">Sıfırla</a>
+</form>
+
+<div class="session-grid">
+    {% for session in sessions %}
+        <a href="{% url 'session_detail' session.session_uid %}" class="session-card">
+            <div class="session-card-content">
+                <h3 class="track-name">
+                    {{ track_names|get_item:session.track_id|default:"Bilinmeyen Pist" }}
+                </h3>
+                <p class="session-type">{{ session.get_session_type_display }}</p>
+                <div class="session-meta">
+                    <span>{{ session.created_at|date:"d F Y, H:i" }}</span>
+                    <span>Detayları Gör →</span>
+                </div>
+            </div>
+        </a>
+    {% empty %}
+        <div class="empty-state">
+            <p>Bu filtrelere uygun seans bulunamadı.</p>
+        </div>
+    {% endfor %}
+</div>
+
 {% endblock %}
