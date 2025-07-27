@@ -5,46 +5,7 @@ from .analysis import SessionAnalyzer
 import os
 import json
 import math
-
-TRACK_NAMES = {
-    -1: "Bilinmiyor",
-    0: "Melbourne",
-    1: "Paul Ricard",
-    2: "Shanghai",
-    3: "Bahrain",
-    4: "Catalunya",
-    5: "Monaco",
-    6: "Montreal",
-    7: "Silverstone",
-    8: "Hockenheim",
-    9: "Hungaroring",
-    10: "Spa",
-    11: "Monza",
-    12: "Singapore",
-    13: "Suzuka",
-    14: "Abu Dhabi",
-    15: "Texas",
-    16: "Brazil",
-    17: "Austria",
-    18: "Sochi",
-    19: "Mexico",
-    20: "Baku",
-    21: "Sakhir (Short)",
-    22: "Silverstone (Short)",
-    23: "Texas (Short)",
-    24: "Suzuka (Short)",
-    25: "Hanoi", # F1 2020+
-    26: "Zandvoort", # F1 2020+
-    27: "Imola", # F1 2020+
-    28: "Portimao", # F1 2020+
-    29: "Jeddah", # F1 2021+
-    30: "Miami", # F1 2022+
-    31: "Las Vegas",
-    32: "Losail" # F1 2023+
-    # Diğer pistler için ID'leri buradan kontrol edebilirsin:
-    # https://docs.google.com/spreadsheets/d/1Xy4Z6h1N4qP8_4_z1_hK0Q_N_X-f5D4j3-jN5_g5D5w/edit#gid=0 (F1 2023 UDP spec referansı)
-    # F1 2024 için güncel bir liste bulunamıyorsa bu liste başlangıç için yeterlidir.
-}
+from .constants import TRACK_NAMES
 
 def dashboard_view(request):
     """
