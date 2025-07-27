@@ -95,31 +95,48 @@ class Command(BaseCommand):
             t = h.get('m_session_time')
             if t is None: continue
             key = round(t * 50) / 50
-            if h.get('m_packet_id') == 6:
+            if h.get('m_packet_id') == 6: # CarTelemetryData
                 tel = p['m_car_telemetry_data'][player_car_index]
-                time_data[key].update({'speed': tel.get('m_speed'), 'throttle': tel.get('m_throttle'), 'brake': tel.get('m_brake'), 'gear': tel.get('m_gear')})
-            elif h.get('m_packet_id') == 7:
+                # ÖNEMLİ: parser24.py'deki alan adının 'm_engine_rpm' olduğunu varsayıyoruz
+                time_data[key].update({'speed': tel.get('m_speed'), 'throttle': tel.get('m_throttle'), 'brake': tel.get('m_brake'), 'gear': tel.get('m_gear'), 'rpm': tel.get('m_engine_rpm')})
+            elif h.get('m_packet_id') == 7: # CarStatusData
                 stat = p['m_car_status_data'][player_car_index]
-                time_data[key].update({'fuel': stat.get('m_fuel_in_tank')})
+                time_data[key].update({'fuel_in_tank': stat.get('m_fuel_in_tank')})
 
-        telemetry_to_create, last_fuel = [], None
+        # Veritabanına yazılacak nesneleri hazırla
+        telemetry_to_create = []
         lap_db_objects = {lap.lap_number: lap for lap in Lap.objects.filter(session=session)}
         sorted_laps = sorted(laps_info.items())
+        last_known_fuel = None
 
         for time, data in sorted(time_data.items()):
-            last_fuel = data.get('fuel', last_fuel)
-            if 'speed' in data:
+            # Yakıt verisi geldiyse güncelle, gelmediyse son bilineni kullan
+            last_known_fuel = data.get('fuel_in_tank', last_known_fuel)
+            
+            # Sadece telemetri verisi (hız, rpm vb.) olan zaman noktalarını kaydet
+            if 'speed' in data or 'rpm' in data:
                 lap_obj, lap_time = None, None
                 for num, times in sorted_laps:
                     if times['start_time'] <= time < times['end_time']:
-                        lap_obj, lap_time = lap_db_objects.get(num), time - times['start_time']
+                        lap_obj = lap_db_objects.get(num)
+                        lap_time = time - times['start_time']
                         break
+                
                 telemetry_to_create.append(TelemetryData(
-                    session=session, lap=lap_obj, session_time=time, lap_time=lap_time or time,
-                    speed=data.get('speed', 0), throttle=data.get('throttle', 0.0), brake=data.get('brake', 0.0),
-                    gear=data.get('gear', 0), fuel_in_tank=last_fuel
+                    session=session, 
+                    lap=lap_obj, 
+                    session_time=time, 
+                    lap_time=lap_time if lap_time is not None else time,
+                    speed=data.get('speed', 0), 
+                    throttle=data.get('throttle', 0.0), 
+                    brake=data.get('brake', 0.0),
+                    gear=data.get('gear', 0), 
+                    rpm=data.get('rpm', 0),
+                    fuel_in_tank=last_known_fuel
                 ))
         
         if telemetry_to_create:
-            TelemetryData.objects.bulk_create(telemetry_to_create)
+            # Eski veriyi silmek, tekrar import ederken tutarlılık sağlar
+            TelemetryData.objects.filter(session=session).delete()
+            TelemetryData.objects.bulk_create(telemetry_to_create, batch_size=500)
             self.stdout.write(self.style.SUCCESS(f'  -> {len(telemetry_to_create)} adet birleşik telemetri noktası eklendi.'))

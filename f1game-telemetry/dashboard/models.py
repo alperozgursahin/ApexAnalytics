@@ -72,6 +72,7 @@ class TelemetryData(models.Model):
     # Depodaki anlık yakıt miktarı (kg). Her telemetri anında bu veri olmayacağı için
     fuel_in_tank = models.FloatField(null=True, blank=True)
 
+    rpm = models.PositiveIntegerField(null=True, blank=True, help_text="Motor Devri (RPM)")
 
     class Meta:
         ordering = ['session_time'] # Zaman sırasına göre sırala

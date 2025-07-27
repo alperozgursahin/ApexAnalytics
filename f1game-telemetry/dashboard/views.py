@@ -135,9 +135,9 @@ def session_detail_view(request, session_uid):
     
     # 2. Tüm analizleri çalıştır ve sonuçları al.
     analysis_results = analyzer.run_full_analysis()
-
+    
     track_name = TRACK_NAMES.get(session.track_id, f"Bilinmiyor (ID: {session.track_id})")
-
+    
 
     context = {
         'session': session,

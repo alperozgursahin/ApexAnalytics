@@ -1,15 +1,17 @@
 <!DOCTYPE html>
 <html lang="tr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Seans Detayı | F1 Telemetry</title>
-    
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-    
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 
     <style>
         :root {
@@ -17,66 +19,85 @@
             --card-dark: #16213e;
             --text-primary: #e94560;
             --text-secondary: #dcdcdc;
-            --border-color: rgba(255, 255, 255, 0.1);
+            --border-color: rgba(255, 255, 255, 0.2);
+            --grid-bg: rgba(255, 255, 255, 0.05);
         }
-        body { 
-            font-family: 'Poppins', sans-serif; 
-            background-color: var(--bg-dark); 
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-dark);
             color: var(--text-secondary);
             margin: 0;
             padding: 20px;
         }
-        .container { 
-            max-width: 1400px; 
+
+        .container {
+            max-width: 1600px;
             margin: auto;
+            padding: 0 15px;
         }
-        h1, h2 { 
-            color: var(--text-primary); 
+
+        h1, h2 {
+            color: var(--text-primary);
             border-bottom: 2px solid var(--border-color);
             padding-bottom: 10px;
             margin-top: 40px;
         }
-        a { 
-            color: var(--text-primary); 
+
+        h1 {
+            font-size: 2.5em;
+            margin-top: 0;
+        }
+
+        a {
+            color: var(--text-primary);
             font-weight: 600;
             text-decoration: none;
             transition: color 0.3s;
         }
+
         a:hover {
             color: #fff;
         }
+
         .session-header {
             background-color: var(--card-dark);
-            padding: 20px;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
+            padding: 25px;
+            border-radius: 12px;
+            border-left: 5px solid var(--text-primary);
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
+            margin-bottom: 30px;
         }
+
         .session-header p {
             margin: 5px 10px;
             font-size: 1.1em;
         }
-        .chart-container { 
-            margin-top: 20px; 
+
+        .chart-container {
+            margin-top: 30px;
             background-color: var(--card-dark);
             padding: 20px;
             border-radius: 8px;
-            border: 1px solid var(--border-color);
         }
+
         .chart-wrapper {
             position: relative;
-            height: 350px;
+            height: 350px; /* Sabit yükseklik */
+            width: 100%;
         }
+
         .charts-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
             gap: 20px;
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="session-header">
@@ -89,22 +110,23 @@
                 <p><strong>Tarih:</strong> {{ session.created_at|date:"d M Y H:i" }}</p>
             </div>
         </div>
-        
+
         {% if analysis.error %}
-            <p style="color: red;">{{ analysis.error }}</p>
+            <p style="color: red; font-size: 1.2em;">{{ analysis.error }}</p>
         {% else %}
-            <h2>Analiz Sonuçları</h2>
+            <h2>Genel Analiz</h2>
             <p><strong>En Hızlı Tur:</strong> {{ analysis.fastest_lap_str }}</p>
 
             <div class="chart-container">
-                <h2>Tur Zamanları</h2>
+                <h2>Tur Zamanları Karşılaştırması</h2>
                 <div class="chart-wrapper">
                     <canvas id="lapTimesChart"></canvas>
                 </div>
             </div>
-            
+
+            <h2>En Hızlı Tur Telemetrisi</h2>
             <div class="chart-container">
-                <h2>En Hızlı Tur - Hız Grafiği</h2>
+                <h3>Hız Grafiği</h3>
                 <div class="chart-wrapper">
                     <canvas id="speedChart"></canvas>
                 </div>
@@ -112,31 +134,32 @@
 
             <div class="charts-grid">
                 <div class="chart-container">
-                    <h2>Gaz Pedalı</h2>
+                    <h3>Gaz & Fren</h3>
                     <div class="chart-wrapper">
-                        <canvas id="throttleChart"></canvas>
+                        <canvas id="throttleBrakeChart"></canvas>
                     </div>
                 </div>
                 <div class="chart-container">
-                    <h2>Fren Pedalı</h2>
+                    <h3>Motor Devri (RPM)</h3>
                     <div class="chart-wrapper">
-                        <canvas id="brakeChart"></canvas>
-                    </div>
-                </div>
-                <div class="chart-container">
-                    <h2>Yakıt Seviyesi</h2>
-                    <div class="chart-wrapper">
-                        <canvas id="fuelChart"></canvas>
+                        <canvas id="rpmChart"></canvas>
                     </div>
                 </div>
             </div>
 
+            <div class="chart-container">
+                <h2>Seans Boyunca Yakıt Seviyesi</h2>
+                <div class.chart-wrapper">
+                    <canvas id="fuelChart"></canvas>
+                </div>
+            </div>
+
+            {# Verileri JSON olarak HTML içine gömüyoruz #}
             {{ analysis.lap_times_chart_data|json_script:"lap-times-data" }}
             {{ analysis.telemetry_chart_data|json_script:"telemetry-data" }}
             {{ analysis.fuel_chart_data|json_script:"fuel-data" }}
-
         {% endif %}
-        
+
         <br>
         <a href="{% url 'session_list' %}"> ← Tüm Seanslara Geri Dön</a>
     </div>
@@ -151,97 +174,119 @@
 
         const commonChartOptions = {
             maintainAspectRatio: false,
-            scales: {
-                x: { ticks: { color: '#dcdcdc' }, grid: { color: 'rgba(220, 220, 220, 0.1)' } },
-                y: { ticks: { color: '#dcdcdc' }, grid: { color: 'rgba(220, 220, 220, 0.1)' } }
+            responsive: true,
+            interaction: {
+                intersect: false,
+                mode: 'index',
             },
-            plugins: { legend: { labels: { color: '#dcdcdc' } } }
-        };
-
-        // --- 1. TUR ZAMANLARI GRAFİĞİ (DEĞİŞİKLİK YOK) ---
-        const lapDataJSON = JSON.parse(document.getElementById('lap-times-data').textContent);
-        if (lapDataJSON && lapDataJSON.length > 0) {
-            const lapCtx = document.getElementById('lapTimesChart').getContext('2d');
-            new Chart(lapCtx, {
-                type: 'bar',
-                data: {
-                    labels: lapDataJSON.map(d => `Tur ${d.lap}`),
-                    datasets: [{ label: 'Tur Zamanı', data: lapDataJSON.map(d => d.time_ms / 1000), backgroundColor: 'rgba(233, 69, 96, 0.6)', borderColor: 'rgba(233, 69, 96, 1)' }]
+            scales: {
+                x: {
+                    type: 'linear', // Zaman ekseni için 'linear' daha iyi performans verir
+                    ticks: { color: '#dcdcdc' },
+                    grid: { color: 'rgba(220, 220, 220, 0.1)' }
                 },
-                options: { ...commonChartOptions, scales: { ...commonChartOptions.scales, y: { ...commonChartOptions.scales.y, beginAtZero: false, ticks: { ...commonChartOptions.scales.y.ticks, callback: (val) => formatTime(val) } } }, plugins: { ...commonChartOptions.plugins, tooltip: { callbacks: { label: (ctx) => 'Tur Zamanı: ' + formatTime(ctx.parsed.y) } } } }
-            });
-        }
-        
-        // --- 2. AYRIŞTIRILMIŞ TELEMETRİ GRAFİKLERİ (DEĞİŞİKLİK YOK) ---
-        const telemetryDataJSON = JSON.parse(document.getElementById('telemetry-data').textContent);
-        if (telemetryDataJSON && telemetryDataJSON.length > 0) {
-            const telemetryLabels = telemetryDataJSON.map(d => d.lap_time);
-
-            const speedCtx = document.getElementById('speedChart').getContext('2d');
-            new Chart(speedCtx, {
-                type: 'line',
-                data: { labels: telemetryLabels, datasets: [{ label: 'Hız (km/s)', data: telemetryDataJSON.map(d => d.speed), borderColor: 'rgb(255, 99, 132)', tension: 0.2, pointRadius: 0 }] },
-                options: { ...commonChartOptions, scales: { x: { type: 'linear', title: { display: true, text: 'Tur İçindeki Zaman', color: '#dcdcdc' }, ticks: { callback: (val) => formatTime(val) } }, y: { title: { display: true, text: 'Hız (km/s)', color: '#dcdcdc' }, max: 370 } }, plugins: { ...commonChartOptions.plugins, tooltip: { callbacks: { title: (ctx) => 'Zaman: ' + formatTime(ctx[0].parsed.x) } } } }
-            });
-
-            const throttleCtx = document.getElementById('throttleChart').getContext('2d');
-            new Chart(throttleCtx, {
-                type: 'line',
-                data: { labels: telemetryLabels, datasets: [{ label: 'Gaz (% Basılma)', data: telemetryDataJSON.map(d => d.throttle * 100), borderColor: 'rgb(75, 192, 192)', tension: 0.2, pointRadius: 0, fill: true, backgroundColor: 'rgba(75, 192, 192, 0.2)' }] },
-                options: { ...commonChartOptions, scales: { x: { type: 'linear', title: { display: true, text: 'Tur İçindeki Zaman', color: '#dcdcdc' }, ticks: { callback: (val) => formatTime(val) } }, y: { title: { display: true, text: 'Yüzde (%)', color: '#dcdcdc' }, min: 0, max: 100 } }, plugins: { ...commonChartOptions.plugins, tooltip: { callbacks: { title: (ctx) => 'Zaman: ' + formatTime(ctx[0].parsed.x) } } } }
-            });
-
-            const brakeCtx = document.getElementById('brakeChart').getContext('2d');
-            new Chart(brakeCtx, {
-                type: 'line',
-                data: { labels: telemetryLabels, datasets: [{ label: 'Fren (% Basılma)', data: telemetryDataJSON.map(d => d.brake * 100), borderColor: 'rgb(255, 205, 86)', tension: 0.2, pointRadius: 0, fill: true, backgroundColor: 'rgba(255, 205, 86, 0.2)' }] },
-                options: { ...commonChartOptions, scales: { x: { type: 'linear', title: { display: true, text: 'Tur İçindeki Zaman', color: '#dcdcdc' }, ticks: { callback: (val) => formatTime(val) } }, y: { title: { display: true, text: 'Yüzde (%)', color: '#dcdcdc' }, min: 0, max: 100 } }, plugins: { ...commonChartOptions.plugins, tooltip: { callbacks: { title: (ctx) => 'Zaman: ' + formatTime(ctx[0].parsed.x) } } } }
-            });
-        }
-        
-        // --- 3. YAKIT GRAFİĞİ (YENİ EKLENDİ) ---
-        const fuelDataJSON = JSON.parse(document.getElementById('fuel-data').textContent);
-        if (fuelDataJSON && fuelDataJSON.length > 0) {
-            const fuelCtx = document.getElementById('fuelChart').getContext('2d');
-            new Chart(fuelCtx, {
-                type: 'line',
-                data: {
-                    labels: fuelDataJSON.map(d => d.session_time),
-                    datasets: [{
-                        label: 'Depodaki Yakıt (kg)',
-                        data: fuelDataJSON.map(d => d.fuel_in_tank),
-                        borderColor: 'rgb(153, 102, 255)',
-                        tension: 0.2,
-                        pointRadius: 0,
-                        fill: true,
-                        backgroundColor: 'rgba(153, 102, 255, 0.2)'
-                    }]
+                y: {
+                    ticks: { color: '#dcdcdc' },
+                    grid: { color: 'rgba(220, 220, 220, 0.1)' }
+                }
+            },
+            plugins: {
+                legend: {
+                    labels: { color: '#dcdcdc' }
                 },
-                options: {
-                    ...commonChartOptions,
-                    scales: {
-                        x: {
-                            ...commonChartOptions.scales.x,
-                            type: 'linear',
-                            title: { display: true, text: 'Seans Zamanı', color: '#dcdcdc' },
-                            ticks: { ...commonChartOptions.scales.x.ticks, callback: (val) => formatTime(val) }
-                        },
-                        y: {
-                            ...commonChartOptions.scales.y,
-                            title: { display: true, text: 'Yakıt (kg)', color: '#dcdcdc' }
-                        }
-                    },
-                    plugins: {
-                        ...commonChartOptions.plugins,
-                        tooltip: {
-                            callbacks: {
-                                title: (ctx) => 'Zaman: ' + formatTime(ctx[0].parsed.x)
-                            }
-                        }
+                tooltip: {
+                    callbacks: {
+                        title: (ctx) => 'Zaman: ' + formatTime(ctx[0].parsed.x)
                     }
                 }
-            });
-        }
+            }
+        };
+
+        // --- 1. TUR ZAMANLARI GRAFİĞİ ---
+        try {
+            const lapDataJSON = JSON.parse(document.getElementById('lap-times-data').textContent);
+            if (lapDataJSON && lapDataJSON.length > 0) {
+                const lapCtx = document.getElementById('lapTimesChart').getContext('2d');
+                new Chart(lapCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: lapDataJSON.map(d => `Tur ${d.lap}`),
+                        datasets: [{
+                            label: 'Tur Zamanı (saniye)',
+                            data: lapDataJSON.map(d => d.time_ms / 1000),
+                            backgroundColor: 'rgba(233, 69, 96, 0.6)',
+                            borderColor: 'rgba(233, 69, 96, 1)'
+                        }]
+                    },
+                    options: {
+                        ...commonChartOptions,
+                        scales: {
+                            ...commonChartOptions.scales,
+                            x: { ...commonChartOptions.scales.x, type: 'category' }, // Barlar için 'category' olmalı
+                            y: { ...commonChartOptions.scales.y, ticks: { ...commonChartOptions.scales.y.ticks, callback: (val) => formatTime(val) } }
+                        },
+                        plugins: { ...commonChartOptions.plugins, tooltip: { callbacks: { label: (ctx) => 'Zaman: ' + formatTime(ctx.parsed.y) } } }
+                    }
+                });
+            }
+        } catch (e) { console.error("Tur zamanları grafiği çizilemedi:", e); }
+
+
+        // --- 2. TELEMETRİ GRAFİKLERİ ---
+        try {
+            const telemetryDataJSON = JSON.parse(document.getElementById('telemetry-data').textContent);
+            if (telemetryDataJSON && telemetryDataJSON.length > 0) {
+                const telemetryLabels = telemetryDataJSON.map(d => d.lap_time);
+
+                // Hız Grafiği
+                new Chart(document.getElementById('speedChart').getContext('2d'), {
+                    type: 'line',
+                    data: { labels: telemetryLabels, datasets: [{ label: 'Hız (km/s)', data: telemetryDataJSON.map(d => d.speed), borderColor: 'rgb(255, 99, 132)', tension: 0.2, pointRadius: 0 }] },
+                    options: { ...commonChartOptions, scales: { ...commonChartOptions.scales, x: {...commonChartOptions.scales.x, ticks: {callback: (val) => formatTime(val)}}, y: { ...commonChartOptions.scales.y, title: { display: true, text: 'Hız (km/s)', color: '#dcdcdc' }, max: 370 } } }
+                });
+
+                // Gaz & Fren Grafiği
+                new Chart(document.getElementById('throttleBrakeChart').getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: telemetryLabels,
+                        datasets: [
+                            { label: 'Gaz (%)', data: telemetryDataJSON.map(d => d.throttle * 100), borderColor: 'rgb(75, 192, 192)', tension: 0.2, pointRadius: 0, fill: true, backgroundColor: 'rgba(75, 192, 192, 0.2)' },
+                            { label: 'Fren (%)', data: telemetryDataJSON.map(d => d.brake * 100), borderColor: 'rgb(255, 205, 86)', tension: 0.2, pointRadius: 0, fill: true, backgroundColor: 'rgba(255, 205, 86, 0.2)' }
+                        ]
+                    },
+                    options: { ...commonChartOptions, scales: { ...commonChartOptions.scales, x: {...commonChartOptions.scales.x, ticks: {callback: (val) => formatTime(val)}}, y: { ...commonChartOptions.scales.y, title: { display: true, text: 'Yüzde (%)', color: '#dcdcdc' }, min: 0, max: 100 } } }
+                });
+
+                // RPM Grafiği
+                new Chart(document.getElementById('rpmChart').getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: telemetryLabels,
+                        datasets: [{ label: 'Motor Devri (RPM)', data: telemetryDataJSON.map(d => d.rpm), borderColor: 'rgb(201, 203, 207)', tension: 0.2, pointRadius: 0 }]
+                    },
+                    options: { ...commonChartOptions, scales: { ...commonChartOptions.scales, x: {...commonChartOptions.scales.x, ticks: {callback: (val) => formatTime(val)}}, y: { ...commonChartOptions.scales.y, title: { display: true, text: 'RPM', color: '#dcdcdc' } } } }
+                });
+            }
+        } catch (e) { console.error("Telemetri grafikleri çizilemedi:", e); }
+
+
+        // --- 3. YAKIT GRAFİĞİ ---
+        try {
+            const fuelDataJSON = JSON.parse(document.getElementById('fuel-data').textContent);
+            if (fuelDataJSON && fuelDataJSON.length > 0) {
+                new Chart(document.getElementById('fuelChart').getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: fuelDataJSON.map(d => d.session_time),
+                        datasets: [{ label: 'Depodaki Yakıt (kg)', data: fuelDataJSON.map(d => d.fuel_in_tank), borderColor: 'rgb(153, 102, 255)', tension: 0.2, pointRadius: 0, fill: true, backgroundColor: 'rgba(153, 102, 255, 0.2)' }]
+                    },
+                    options: { ...commonChartOptions, scales: { ...commonChartOptions.scales, x: {...commonChartOptions.scales.x, ticks: {callback: (val) => formatTime(val)}}, y: { ...commonChartOptions.scales.y, title: { display: true, text: 'Yakıt (kg)', color: '#dcdcdc' } } } }
+                });
+            }
+        } catch (e) { console.error("Yakıt grafiği çizilemedi:", e); }
+
     </script>
 </body>
+
 </html>
