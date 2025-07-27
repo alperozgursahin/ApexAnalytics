@@ -24,6 +24,18 @@ class RaceSession(models.Model):
         (17, 'Yarış 3'),
         (18, 'Zamana Karşı'),
     ]
+    GAME_MODE_CHOICES = [
+        (0, 'Event Mode'), (3, 'Grand Prix'), (4, 'Grand Prix ‘23'),
+        (5, 'Time Trial'), (6, 'Splitscreen'), (7, 'Online Custom'),
+        (8, 'Online League'), (11, 'Career Invitational'),
+        (12, 'Championship Invitational'), (13, 'Championship'),
+        (14, 'Online Championship'), (15, 'Online Weekly Event'),
+        (17, 'Story Mode'), (19, 'Career ‘22'), (20, 'Career ’22 Online'),
+        (21, 'Career ‘23'), (22, 'Career ’23 Online'),
+        (23, 'Driver Career ‘24'), (24, 'Career ’24 Online'),
+        (25, 'My Team Career ‘24'), (26, 'Curated Career ‘24'),
+        (127, 'Benchmark'),
+    ]
     # Oyun tarafından sağlanan benzersiz seans kimliği. CharField olarak tutuyoruz
     # çünkü bu ID çok büyük bir sayı olabilir.
     session_uid = models.CharField(max_length=25, primary_key=True, unique=True)
@@ -37,6 +49,12 @@ class RaceSession(models.Model):
         null=True, 
         blank=True,
         help_text="Seansın türü (Antrenman, Sıralama, Yarış vb.)"
+    )
+    game_mode = models.IntegerField(
+        choices=GAME_MODE_CHOICES,
+        null=True,
+        blank=True,
+        help_text="Oyun Modu (Kariyer, Online, GP vb.)"
     )
     
     # Seansın veritabanına kaydedildiği zaman (otomatik olarak atanır)

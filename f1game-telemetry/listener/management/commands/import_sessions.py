@@ -56,14 +56,11 @@ class Command(BaseCommand):
         return None
 
     def _update_session_info(self, packets, session):
-        """
-        Seans paketini (ID=1) bulur ve hem track_id hem de session_type
-        alanlarını günceller.
-        """
         for p in packets:
             if p.get('m_header', {}).get('m_packet_id') == 1:
                 track_id = p.get('m_track_id')
-                session_type = p.get('m_session_type') # <-- YENİ
+                session_type = p.get('m_session_type')
+                game_mode = p.get('m_game_mode')
                 
                 updated = False
                 if track_id is not None and session.track_id != track_id:
@@ -71,12 +68,18 @@ class Command(BaseCommand):
                     updated = True
                 
                 if session_type is not None and session.session_type != session_type:
-                    session.session_type = session_type # <-- YENİ
+                    session.session_type = session_type
+                    updated = True
+                
+                if game_mode is not None and session.game_mode != game_mode:
+                    session.game_mode = game_mode
                     updated = True
 
                 if updated:
                     session.save()
-                    self.stdout.write(self.style.NOTICE(f'  -> Seans bilgileri güncellendi (Pist: {track_id}, Tür: {session_type})'))
+                    self.stdout.write(self.style.NOTICE(
+                        f'  -> Seans bilgileri güncellendi (Pist: {track_id}, Tür: {session_type}, Mod: {game_mode})'
+                    ))
                 return
 
     def _save_raw_packets(self, packets, session):

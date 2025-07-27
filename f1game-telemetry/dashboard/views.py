@@ -116,30 +116,29 @@ def dashboard_view(request):
     return render(request, 'dashboard/dashboard.html', context)
 
 def session_list_view(request):
-    """
-    Veritabanındaki tüm yarış seanslarını, filtreleme özellikleriyle listeleyen bir view.
-    """
-    # Başlangıçta tüm seansları alıyoruz
     queryset = RaceSession.objects.all().order_by('-created_at')
     
-    # GET request'ten gelen filtre parametrelerini alıyoruz
     selected_track = request.GET.get('track_id', '')
     selected_type = request.GET.get('session_type', '')
+    selected_game_mode = request.GET.get('game_mode', '')
 
-    # Eğer bir pist seçilmişse ve sayısal bir değerse, queryset'i filtrele
     if selected_track and selected_track.isdigit():
         queryset = queryset.filter(track_id=int(selected_track))
 
-    # Eğer bir seans türü seçilmişse ve sayısal bir değerse, queryset'i filtrele
     if selected_type and selected_type.isdigit():
         queryset = queryset.filter(session_type=int(selected_type))
 
+    if selected_game_mode and selected_game_mode.isdigit():
+        queryset = queryset.filter(game_mode=int(selected_game_mode))
+
     context = {
         'sessions': queryset,
-        'track_names': TRACK_NAMES, # Pist dropdown'ı için
-        'session_types': RaceSession.SESSION_TYPE_CHOICES, # Tür dropdown'ı için
-        'selected_track': selected_track, # Seçili değeri template'te göstermek için
-        'selected_type': selected_type,   # Seçili değeri template'te göstermek için
+        'track_names': TRACK_NAMES,
+        'session_types': RaceSession.SESSION_TYPE_CHOICES,
+        'game_modes': RaceSession.GAME_MODE_CHOICES,
+        'selected_track': selected_track,
+        'selected_type': selected_type,
+        'selected_game_mode': selected_game_mode,
     }
     return render(request, 'dashboard/session_list.html', context)
 
