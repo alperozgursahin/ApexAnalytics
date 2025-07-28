@@ -128,6 +128,10 @@ class Command(BaseCommand):
         return laps_info
 
     def _process_combined_data(self, packets, session, player_car_index, laps_info):
+        """
+        Tüm telemetri ve durum verilerini (ERS ve DRS dahil) birleştirir,
+        TelemetryData nesneleri oluşturur ve Lap nesnelerinin lastik bilgisini günceller.
+        """
         time_data = defaultdict(dict)
         for p in packets:
             h = p.get('m_header', {})
@@ -143,42 +147,63 @@ class Command(BaseCommand):
                     'throttle': tel.get('m_throttle'), 
                     'brake': tel.get('m_brake'), 
                     'gear': tel.get('m_gear'), 
-                    'rpm': tel.get('m_engine_rpm')
+                    'rpm': tel.get('m_engine_rpm'),
+                    'drs': tel.get('m_drs') == 1 # <-- YENİ: DRS verisi (1 ise True, değilse False)
                 })
             elif h.get('m_packet_id') == 7: # CarStatusData
                 stat = p['m_car_status_data'][player_car_index]
                 time_data[key].update({
                     'fuel_in_tank': stat.get('m_fuel_in_tank'),
-                    'tyre_compound': stat.get('m_visual_tyre_compound')
+                    'tyre_compound': stat.get('m_visual_tyre_compound'),
+                    'ers_store_energy': stat.get('m_ers_store_energy'), # <-- YENİ: ERS Batarya
+                    'ers_deploy_mode': stat.get('m_ers_deploy_mode')    # <-- YENİ: ERS Modu
                 })
 
         # 1. Adım: Tüm TelemetryData nesnelerini oluştur
         telemetry_to_create = []
-        lap_db_objects = {lap.lap_number: lap for lap in Lap.objects.filter(session=session)}
+        laps_in_session = {lap.lap_number: lap for lap in Lap.objects.filter(session=session)}
         sorted_laps = sorted(laps_info.items())
-        last_known_fuel = None
-        last_known_compound = None
+        
+        # Son bilinen değerleri saklamak için değişkenler
+        last_known_data = {
+            'fuel': None,
+            'compound': None,
+            'ers_store': None,
+            'ers_mode': None
+        }
 
         for time, data in sorted(time_data.items()):
-            last_known_fuel = data.get('fuel_in_tank', last_known_fuel)
-            last_known_compound = data.get('tyre_compound', last_known_compound)
+            # Mevcut zaman diliminde veri yoksa, son bilinen değeri kullan
+            last_known_data['fuel'] = data.get('fuel_in_tank', last_known_data['fuel'])
+            last_known_data['compound'] = data.get('tyre_compound', last_known_data['compound'])
+            last_known_data['ers_store'] = data.get('ers_store_energy', last_known_data['ers_store'])
+            last_known_data['ers_mode'] = data.get('ers_deploy_mode', last_known_data['ers_mode'])
 
+            # Sadece telemetri verisi (hız, rpm vb.) olan zaman noktalarını kaydet
             if 'speed' in data or 'rpm' in data:
                 lap_obj, lap_time = None, None
                 for num, times in sorted_laps:
                     if times['start_time'] <= time < times['end_time']:
-                        lap_obj = lap_db_objects.get(num)
+                        lap_obj = laps_in_session.get(num)
                         lap_time = time - times['start_time']
                         break
                 
                 td = TelemetryData(
                     session=session, lap=lap_obj, session_time=time, 
                     lap_time=lap_time if lap_time is not None else time,
-                    speed=data.get('speed', 0), throttle=data.get('throttle', 0.0), 
-                    brake=data.get('brake', 0.0), gear=data.get('gear', 0), 
-                    rpm=data.get('rpm', 0), fuel_in_tank=last_known_fuel
+                    speed=data.get('speed', 0), 
+                    throttle=data.get('throttle', 0.0), 
+                    brake=data.get('brake', 0.0), 
+                    gear=data.get('gear', 0), 
+                    rpm=data.get('rpm', 0), 
+                    fuel_in_tank=last_known_data['fuel'],
+                    # --- YENİ ALANLARI EKLE ---
+                    drs=data.get('drs', False),
+                    ers_store_energy=last_known_data['ers_store'],
+                    ers_deploy_mode=last_known_data['ers_mode']
                 )
-                td._tyre_compound = last_known_compound 
+                # Geçici lastik verisini ekle
+                td._tyre_compound = last_known_data['compound'] 
                 telemetry_to_create.append(td)
         
         if telemetry_to_create:
@@ -186,8 +211,7 @@ class Command(BaseCommand):
             self.stdout.write(f"  -> ↳ {self.style.SUCCESS(f'{len(telemetry_to_create)} telemetri noktası')} birleştirildi.")
 
         # 2. Adım: Her bir turun lastik bilgisini güncelle
-        # --- DÜZELTME BURADA: `laps_in_session` yerine `lap_db_objects` kullanıldı ---
-        for lap_num, lap_obj in lap_db_objects.items():
+        for lap_num, lap_obj in laps_in_session.items():
             compounds_in_lap = [
                 td._tyre_compound for td in telemetry_to_create 
                 if td.lap and td.lap.lap_number == lap_num and hasattr(td, '_tyre_compound') and td._tyre_compound is not None

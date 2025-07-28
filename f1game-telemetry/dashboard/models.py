@@ -143,6 +143,23 @@ class TelemetryData(models.Model):
     fuel_in_tank = models.FloatField(null=True, blank=True)
 
     rpm = models.PositiveIntegerField(null=True, blank=True, help_text="Motor Devri (RPM)")
+    
+    drs = models.BooleanField(
+        default=False, 
+        help_text="DRS durumu (0=kapalı, 1=açık)"
+    )
+    
+    ers_store_energy = models.FloatField(
+        null=True, 
+        blank=True, 
+        help_text="ERS bataryasında depolanan enerji (Joule)"
+    )
+    
+    ers_deploy_mode = models.IntegerField(
+        null=True, 
+        blank=True, 
+        help_text="ERS kullanım modu (0=yok, 1=medium, 2=hotlap, 3=overtake)"
+    )
 
     class Meta:
         ordering = ['session_time'] # Zaman sırasına göre sırala

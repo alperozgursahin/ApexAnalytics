@@ -154,6 +154,12 @@
         </div>
 
         <div class="chart-container">
+            <h3>Strateji Analizi (ERS & DRS)</h3>
+            <div class="chart-wrapper">
+                <canvas id="strategyChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-container">
             <h2>Seans Boyunca Yakıt Seviyesi</h2>
             <div class="chart-wrapper">
                 <canvas id="fuelChart"></canvas>
@@ -244,7 +250,7 @@
                                 const img = tyreImages[tyreId];
 
                                 if (img && img.complete && img.naturalHeight !== 0) {
-                                    const iconSize = 40;
+                                    const iconSize = 30;
                                     const x = bar.x - (iconSize / 2);
                                     let y = bar.y - iconSize - 5;
                                     if (y < 5) y = 5;
@@ -289,16 +295,98 @@
             const telemetryDataJSON = JSON.parse(document.getElementById('telemetry-data').textContent);
             if (telemetryDataJSON && telemetryDataJSON.length > 0) {
                 const telemetryLabels = telemetryDataJSON.map(d => d.lap_time);
-                new Chart(document.getElementById('speedChart').getContext('2d'), { type: 'line', data: { labels: telemetryLabels, datasets: [{ label: 'Hız (km/s)', data: telemetryDataJSON.map(d => d.speed), borderColor: 'rgb(255, 99, 132)', tension: 0.2, pointRadius: 0 }] }, options: { ...commonChartOptions, scales: { ...commonChartOptions.scales, x: { ...commonChartOptions.scales.x, ticks: { callback: (val) => formatTime(val) } }, y: { ...commonChartOptions.scales.y, title: { display: true, text: 'Hız (km/s)', color: '#dcdcdc' }, max: 370 } } } });
-                new Chart(document.getElementById('throttleBrakeChart').getContext('2d'), { type: 'line', data: { labels: telemetryLabels, datasets: [{ label: 'Gaz (%)', data: telemetryDataJSON.map(d => d.throttle * 100), borderColor: 'rgb(75, 192, 192)', tension: 0.2, pointRadius: 0, fill: true, backgroundColor: 'rgba(75, 192, 192, 0.2)' }, { label: 'Fren (%)', data: telemetryDataJSON.map(d => d.brake * 100), borderColor: 'rgb(255, 205, 86)', tension: 0.2, pointRadius: 0, fill: true, backgroundColor: 'rgba(255, 205, 86, 0.2)' }] }, options: { ...commonChartOptions, scales: { ...commonChartOptions.scales, x: { ...commonChartOptions.scales.x, ticks: { callback: (val) => formatTime(val) } }, y: { ...commonChartOptions.scales.y, title: { display: true, text: 'Yüzde (%)', color: '#dcdcdc' }, min: 0, max: 100 } } } });
-                new Chart(document.getElementById('rpmChart').getContext('2d'), { type: 'line', data: { labels: telemetryLabels, datasets: [{ label: 'Motor Devri (RPM)', data: telemetryDataJSON.map(d => d.rpm), borderColor: 'rgb(201, 203, 207)', tension: 0.2, pointRadius: 0 }] }, options: { ...commonChartOptions, scales: { ...commonChartOptions.scales, x: { ...commonChartOptions.scales.x, ticks: { callback: (val) => formatTime(val) } }, y: { ...commonChartOptions.scales.y, title: { display: true, text: 'RPM', color: '#dcdcdc' } } } } });
+                new Chart(document.getElementById('speedChart').getContext('2d'), { type: 'line', data: { labels: telemetryLabels, datasets: [{ label: 'Hız (km/s)', data: telemetryDataJSON.map(d => d.speed), borderColor: 'rgb(255, 99, 132)', tension: 0.2, pointRadius: 0 }] }, options: { ...commonChartOptions, scales: { x: { ...commonChartOptions.scales.x, type: 'linear', ticks: { ...commonChartOptions.scales.x.ticks, callback: (val) => formatTime(val) } }, y: { ...commonChartOptions.scales.y, title: { display: true, text: 'Hız (km/s)', color: '#dcdcdc' }, max: 370 } } } });
+                new Chart(document.getElementById('throttleBrakeChart').getContext('2d'), { type: 'line', data: { labels: telemetryLabels, datasets: [{ label: 'Gaz (%)', data: telemetryDataJSON.map(d => d.throttle * 100), borderColor: 'rgb(75, 192, 192)', tension: 0.2, pointRadius: 0, fill: true, backgroundColor: 'rgba(75, 192, 192, 0.2)' }, { label: 'Fren (%)', data: telemetryDataJSON.map(d => d.brake * 100), borderColor: 'rgb(255, 205, 86)', tension: 0.2, pointRadius: 0, fill: true, backgroundColor: 'rgba(255, 205, 86, 0.2)' }] }, options: { ...commonChartOptions, scales: { x: { ...commonChartOptions.scales.x, type: 'linear', ticks: { ...commonChartOptions.scales.x.ticks, callback: (val) => formatTime(val) } }, y: { ...commonChartOptions.scales.y, title: { display: true, text: 'Yüzde (%)', color: '#dcdcdc' }, min: 0, max: 100 } } } });
+                new Chart(document.getElementById('rpmChart').getContext('2d'), { type: 'line', data: { labels: telemetryLabels, datasets: [{ label: 'Motor Devri (RPM)', data: telemetryDataJSON.map(d => d.rpm), borderColor: 'rgb(201, 203, 207)', tension: 0.2, pointRadius: 0 }] }, options: { ...commonChartOptions, scales: { x: { ...commonChartOptions.scales.x, type: 'linear', ticks: { ...commonChartOptions.scales.x.ticks, callback: (val) => formatTime(val) } }, y: { ...commonChartOptions.scales.y, title: { display: true, text: 'RPM', color: '#dcdcdc' } } } } });
+                
+                // ******** 2. YENİ EKLENEN JAVASCRIPT KISMI ********
+                // Strateji grafiği, diğer telemetri verileriyle aynı try...catch bloğu içinde
+                const ersDeployModes = { 0: 'None', 1: 'Medium', 2: 'Hotlap', 3: 'Overtake' };
+                const ersModeColors = {
+                    1: 'rgba(255, 255, 0, 0.7)', // Medium: Sarı
+                    2: 'rgba(255, 165, 0, 0.7)', // Hotlap: Turuncu
+                    3: 'rgba(255, 0, 0, 0.7)'    // Overtake: Kırmızı
+                };
+
+                new Chart(document.getElementById('strategyChart').getContext('2d'), {
+                    type: 'bar', // Ana grafik türünü bar yapalım
+                    data: {
+                        labels: telemetryLabels,
+                        datasets: [
+                            {
+                                label: 'ERS Batarya (Joule)',
+                                data: telemetryDataJSON.map(d => d.ers_store_energy),
+                                type: 'line', // Bu veri setini çizgi olarak ata
+                                borderColor: '#66ff66',
+                                backgroundColor: 'rgba(102, 255, 102, 0.2)',
+                                yAxisID: 'y_ers_store',
+                                tension: 0.2,
+                                pointRadius: 0,
+                                fill: 'start'
+                            },
+                            {
+                                label: 'ERS Modu',
+                                data: telemetryDataJSON.map(d => d.ers_deploy_mode > 0 ? d.ers_deploy_mode : null), // 0 ise çizme
+                                backgroundColor: (context) => ersModeColors[context.raw] || 'transparent',
+                                yAxisID: 'y_drs_mode'
+                            },
+                            {
+                                label: 'DRS',
+                                data: telemetryDataJSON.map(d => d.drs ? 4 : null), // DRS'i en üstte 4. seviyede çiz
+                                backgroundColor: 'rgba(138, 43, 226, 0.7)', // Mor
+                                yAxisID: 'y_drs_mode'
+                            }
+                        ]
+                    },
+                    options: {
+                        ...commonChartOptions,
+                        plugins: {
+                            ...commonChartOptions.plugins,
+                            tooltip: {
+                                callbacks: {
+                                    ...commonChartOptions.plugins.tooltip.callbacks,
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label === 'ERS Modu') return `ERS Modu: ${ersDeployModes[context.raw]}`;
+                                        if (label === 'DRS') return `DRS: AÇIK`;
+                                        if (label) { label += ': '; }
+                                        if (context.parsed.y !== null) { label += context.parsed.y.toLocaleString(); }
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: { ...commonChartOptions.scales.x, stacked: true, ticks: { callback: (val) => formatTime(val) } },
+                            y_ers_store: { 
+                                type: 'linear', position: 'left', 
+                                title: { display: true, text: 'ERS Enerjisi (Joule)', color: '#dcdcdc' },
+                                ticks: { color: '#dcdcdc' }, grid: { color: 'rgba(220, 220, 220, 0.1)' } 
+                            },
+                            y_drs_mode: { 
+                                type: 'linear', position: 'right', stacked: true,
+                                title: { display: true, text: 'ERS Modu & DRS', color: '#dcdcdc' },
+                                min: 0, max: 4,
+                                ticks: { 
+                                    color: '#dcdcdc', stepSize: 1,
+                                    callback: (value) => {
+                                        if (value === 4) return 'DRS';
+                                        return ersDeployModes[value] || '';
+                                    }
+                                }, 
+                                grid: { drawOnChartArea: false }
+                            }
+                        }
+                    }
+                });
+                // ************************************************
             }
-        } catch (e) { console.error("Telemetri grafikleri çizilemedi:", e); }
+        } catch (e) { console.error("Telemetri ve strateji grafikleri çizilemedi:", e); }
 
         try {
             const fuelDataJSON = JSON.parse(document.getElementById('fuel-data').textContent);
             if (fuelDataJSON && fuelDataJSON.length > 0) {
-                new Chart(document.getElementById('fuelChart').getContext('2d'), { type: 'line', data: { labels: fuelDataJSON.map(d => d.session_time), datasets: [{ label: 'Depodaki Yakıt (kg)', data: fuelDataJSON.map(d => d.fuel_in_tank), borderColor: 'rgb(153, 102, 255)', tension: 0.2, pointRadius: 0, fill: true, backgroundColor: 'rgba(153, 102, 255, 0.2)' }] }, options: { ...commonChartOptions, scales: { ...commonChartOptions.scales, x: { ...commonChartOptions.scales.x, ticks: { callback: (val) => formatTime(val) } }, y: { ...commonChartOptions.scales.y, title: { display: true, text: 'Yakıt (kg)', color: '#dcdcdc' } } } } });
+                new Chart(document.getElementById('fuelChart').getContext('2d'), { type: 'line', data: { labels: fuelDataJSON.map(d => d.session_time), datasets: [{ label: 'Depodaki Yakıt (kg)', data: fuelDataJSON.map(d => d.fuel_in_tank), borderColor: 'rgb(153, 102, 255)', tension: 0.2, pointRadius: 0, fill: true, backgroundColor: 'rgba(153, 102, 255, 0.2)' }] }, options: { ...commonChartOptions, scales: { x: { ...commonChartOptions.scales.x, ticks: { callback: (val) => formatTime(val) } }, y: { ...commonChartOptions.scales.y, title: { display: true, text: 'Yakıt (kg)', color: '#dcdcdc' } } } } });
             }
         } catch (e) { console.error("Yakıt grafiği çizilemedi:", e); }
     </script>

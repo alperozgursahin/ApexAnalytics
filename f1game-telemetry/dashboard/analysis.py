@@ -40,15 +40,20 @@ class SessionAnalyzer:
 
     def get_telemetry_for_lap(self, lap_number: int):
         """
-        Belirli bir turun TÜM telemetri verilerini (RPM dahil) tek seferde alır.
+        Belirli bir turun TÜM telemetri verilerini (ERS ve DRS dahil) tek seferde alır.
         """
         if not self.session_obj or not lap_number:
             return []
         
+        # --- DEĞİŞİKLİK BURADA ---
+        # .values() listesine yeni alanları ekliyoruz.
         return list(TelemetryData.objects.filter(
             session=self.session_obj,
             lap__lap_number=lap_number
-        ).order_by('lap_time').values('lap_time', 'speed', 'throttle', 'brake', 'rpm'))
+        ).order_by('lap_time').values(
+            'lap_time', 'speed', 'throttle', 'brake', 'rpm',
+            'drs', 'ers_store_energy', 'ers_deploy_mode'  # <-- YENİ EKLENEN ALANLAR
+        ))
 
     def get_fuel_data_for_session(self):
         """
