@@ -18,10 +18,20 @@ class SessionAnalyzer:
             return None
 
     def _get_all_laps_from_db(self):
+        """Veritabanındaki tüm tamamlanmış turları ve lastik bilgilerini bulur."""
         if not self.session_obj:
             return []
-        laps_queryset = self.session_obj.laps.order_by('lap_number')
-        return [{'lap': lap.lap_number, 'time_ms': lap.lap_time_ms} for lap in laps_queryset]
+        
+        laps_queryset = self.session_obj.laps.all().order_by('lap_number')
+        
+        laps = []
+        for lap_obj in laps_queryset:
+            laps.append({
+                'lap': lap_obj.lap_number,
+                'time_ms': lap_obj.lap_time_ms,
+                'tyre_compound': lap_obj.tyre_compound # <-- Bu satırın olması kritik
+            })
+        return laps
 
     def _get_fastest_lap_from_db(self):
         if not self.session_obj:

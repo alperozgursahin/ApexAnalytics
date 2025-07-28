@@ -69,6 +69,28 @@ class RaceSession(models.Model):
         ordering = ['-created_at'] # En yeni seanslar liste başında gözüksün
 
 class Lap(models.Model):
+    # --- BU LİSTEYİ DOĞRU DEĞERLERLE GÜNCELLİYORUZ ---
+    TYRE_COMPOUND_CHOICES = [
+        (16, 'Soft'),
+        (17, 'Medium'),
+        (18, 'Hard'),
+        (7, 'Inter'),
+        (8, 'Wet'),
+        # F2 Lastikleri (Gelecekteki kullanım için eklenebilir)
+        (19, 'F2 Super Soft'),
+        (20, 'F2 Soft'),
+        (21, 'F2 Medium'),
+        (22, 'F2 Hard'),
+    ]
+    # --------------------------------------------------
+
+    tyre_compound = models.IntegerField(
+        choices=TYRE_COMPOUND_CHOICES,
+        null=True,
+        blank=True,
+        help_text="Tur sırasında kullanılan görsel lastik bileşiği"
+    )
+
     # Bu turu içeren seans
     session = models.ForeignKey(RaceSession, on_delete=models.CASCADE, related_name='laps')
     

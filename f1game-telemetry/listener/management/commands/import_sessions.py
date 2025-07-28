@@ -115,11 +115,11 @@ class Command(BaseCommand):
             h = p.get('m_header', {})
             if h.get('m_packet_id') == 2:
                 lap_data = p['m_lap_data'][player_car_index]
-                lap_to_record, last_lap_ms = lap_data.get('m_current_lap_num', 1) - 1, lap_data.get('m_last_lap_time_in_ms', 0)
-                session_time = h.get('m_session_time', 0)
+                lap_to_record, last_lap_ms, session_time = lap_data.get('m_current_lap_num', 1) - 1, lap_data.get('m_last_lap_time_in_ms', 0), h.get('m_session_time', 0)
                 if lap_to_record > 0 and last_lap_ms > 0 and lap_to_record not in recorded_laps:
                     start_time = session_time - (last_lap_ms / 1000.0)
                     laps_info[lap_to_record] = {'start_time': start_time, 'end_time': session_time}
+                    # Lastik bilgisi olmadan Lap nesnesi oluşturuyoruz
                     laps_to_create.append(Lap(session=session, lap_number=lap_to_record, lap_time_ms=last_lap_ms, start_time=start_time, end_time=session_time))
                     recorded_laps.add(lap_to_record)
         if laps_to_create:
@@ -128,27 +128,41 @@ class Command(BaseCommand):
         return laps_info
 
     def _process_combined_data(self, packets, session, player_car_index, laps_info):
-        # ... Bu fonksiyonun içeriği aynı kalıyor, sadece print çıktısını güncelledim ...
         time_data = defaultdict(dict)
         for p in packets:
             h = p.get('m_header', {})
             t = h.get('m_session_time')
             if t is None: continue
-            key = round(t * 50) / 50
-            if h.get('m_packet_id') == 6:
+            
+            key = round(t * 50) / 50 
+            
+            if h.get('m_packet_id') == 6: # CarTelemetryData
                 tel = p['m_car_telemetry_data'][player_car_index]
-                time_data[key].update({'speed': tel.get('m_speed'), 'throttle': tel.get('m_throttle'), 'brake': tel.get('m_brake'), 'gear': tel.get('m_gear'), 'rpm': tel.get('m_engine_rpm')})
-            elif h.get('m_packet_id') == 7:
+                time_data[key].update({
+                    'speed': tel.get('m_speed'), 
+                    'throttle': tel.get('m_throttle'), 
+                    'brake': tel.get('m_brake'), 
+                    'gear': tel.get('m_gear'), 
+                    'rpm': tel.get('m_engine_rpm')
+                })
+            elif h.get('m_packet_id') == 7: # CarStatusData
                 stat = p['m_car_status_data'][player_car_index]
-                time_data[key].update({'fuel_in_tank': stat.get('m_fuel_in_tank')})
+                time_data[key].update({
+                    'fuel_in_tank': stat.get('m_fuel_in_tank'),
+                    'tyre_compound': stat.get('m_visual_tyre_compound')
+                })
 
+        # 1. Adım: Tüm TelemetryData nesnelerini oluştur
         telemetry_to_create = []
         lap_db_objects = {lap.lap_number: lap for lap in Lap.objects.filter(session=session)}
         sorted_laps = sorted(laps_info.items())
         last_known_fuel = None
+        last_known_compound = None
 
         for time, data in sorted(time_data.items()):
             last_known_fuel = data.get('fuel_in_tank', last_known_fuel)
+            last_known_compound = data.get('tyre_compound', last_known_compound)
+
             if 'speed' in data or 'rpm' in data:
                 lap_obj, lap_time = None, None
                 for num, times in sorted_laps:
@@ -156,8 +170,30 @@ class Command(BaseCommand):
                         lap_obj = lap_db_objects.get(num)
                         lap_time = time - times['start_time']
                         break
-                telemetry_to_create.append(TelemetryData(session=session, lap=lap_obj, session_time=time, lap_time=lap_time if lap_time is not None else time, speed=data.get('speed', 0), throttle=data.get('throttle', 0.0), brake=data.get('brake', 0.0), gear=data.get('gear', 0), rpm=data.get('rpm', 0), fuel_in_tank=last_known_fuel))
+                
+                td = TelemetryData(
+                    session=session, lap=lap_obj, session_time=time, 
+                    lap_time=lap_time if lap_time is not None else time,
+                    speed=data.get('speed', 0), throttle=data.get('throttle', 0.0), 
+                    brake=data.get('brake', 0.0), gear=data.get('gear', 0), 
+                    rpm=data.get('rpm', 0), fuel_in_tank=last_known_fuel
+                )
+                td._tyre_compound = last_known_compound 
+                telemetry_to_create.append(td)
         
         if telemetry_to_create:
-            TelemetryData.objects.bulk_create(telemetry_to_create, batch_size=500)
+            TelemetryData.objects.bulk_create([td for td in telemetry_to_create], batch_size=500)
             self.stdout.write(f"  -> ↳ {self.style.SUCCESS(f'{len(telemetry_to_create)} telemetri noktası')} birleştirildi.")
+
+        # 2. Adım: Her bir turun lastik bilgisini güncelle
+        # --- DÜZELTME BURADA: `laps_in_session` yerine `lap_db_objects` kullanıldı ---
+        for lap_num, lap_obj in lap_db_objects.items():
+            compounds_in_lap = [
+                td._tyre_compound for td in telemetry_to_create 
+                if td.lap and td.lap.lap_number == lap_num and hasattr(td, '_tyre_compound') and td._tyre_compound is not None
+            ]
+            
+            if compounds_in_lap:
+                most_common_compound = max(set(compounds_in_lap), key=compounds_in_lap.count)
+                lap_obj.tyre_compound = most_common_compound
+                lap_obj.save()

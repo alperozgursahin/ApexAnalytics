@@ -1,3 +1,5 @@
+{% load static %}
+
 <!DOCTYPE html>
 <html lang="tr">
 
@@ -11,7 +13,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 
     <style>
         :root {
@@ -37,7 +40,9 @@
             padding: 0 15px;
         }
 
-        h1, h2 {
+        h1,
+        h2,
+        h3 {
             color: var(--text-primary);
             border-bottom: 2px solid var(--border-color);
             padding-bottom: 10px;
@@ -47,6 +52,7 @@
         h1 {
             font-size: 2.5em;
             margin-top: 0;
+            border: none;
         }
 
         a {
@@ -86,7 +92,7 @@
 
         .chart-wrapper {
             position: relative;
-            height: 350px; /* Sabit yükseklik */
+            height: 350px;
             width: 100%;
         }
 
@@ -112,52 +118,52 @@
         </div>
 
         {% if analysis.error %}
-            <p style="color: red; font-size: 1.2em;">{{ analysis.error }}</p>
+        <p style="color: red; font-size: 1.2em;">{{ analysis.error }}</p>
         {% else %}
-            <h2>Genel Analiz</h2>
-            <p><strong>En Hızlı Tur:</strong> {{ analysis.fastest_lap_str }}</p>
+        <h2>Genel Analiz</h2>
+        <p><strong>En Hızlı Tur:</strong> {{ analysis.fastest_lap_str }}</p>
 
+        <div class="chart-container">
+            <h2>Tur Zamanları Karşılaştırması</h2>
+            <div class="chart-wrapper">
+                <canvas id="lapTimesChart"></canvas>
+            </div>
+        </div>
+
+        <h2>En Hızlı Tur Telemetrisi</h2>
+        <div class="chart-container">
+            <h3>Hız Grafiği</h3>
+            <div class="chart-wrapper">
+                <canvas id="speedChart"></canvas>
+            </div>
+        </div>
+
+        <div class="charts-grid">
             <div class="chart-container">
-                <h2>Tur Zamanları Karşılaştırması</h2>
+                <h3>Gaz & Fren</h3>
                 <div class="chart-wrapper">
-                    <canvas id="lapTimesChart"></canvas>
+                    <canvas id="throttleBrakeChart"></canvas>
                 </div>
             </div>
-
-            <h2>En Hızlı Tur Telemetrisi</h2>
             <div class="chart-container">
-                <h3>Hız Grafiği</h3>
+                <h3>Motor Devri (RPM)</h3>
                 <div class="chart-wrapper">
-                    <canvas id="speedChart"></canvas>
+                    <canvas id="rpmChart"></canvas>
                 </div>
             </div>
+        </div>
 
-            <div class="charts-grid">
-                <div class="chart-container">
-                    <h3>Gaz & Fren</h3>
-                    <div class="chart-wrapper">
-                        <canvas id="throttleBrakeChart"></canvas>
-                    </div>
-                </div>
-                <div class="chart-container">
-                    <h3>Motor Devri (RPM)</h3>
-                    <div class="chart-wrapper">
-                        <canvas id="rpmChart"></canvas>
-                    </div>
-                </div>
+        <div class="chart-container">
+            <h2>Seans Boyunca Yakıt Seviyesi</h2>
+            <div class="chart-wrapper">
+                <canvas id="fuelChart"></canvas>
             </div>
+        </div>
 
-            <div class="chart-container">
-                <h2>Seans Boyunca Yakıt Seviyesi</h2>
-                <div class.chart-wrapper">
-                    <canvas id="fuelChart"></canvas>
-                </div>
-            </div>
-
-            {# Verileri JSON olarak HTML içine gömüyoruz #}
-            {{ analysis.lap_times_chart_data|json_script:"lap-times-data" }}
-            {{ analysis.telemetry_chart_data|json_script:"telemetry-data" }}
-            {{ analysis.fuel_chart_data|json_script:"fuel-data" }}
+        {# Verileri JSON olarak HTML içine gömüyoruz #}
+        {{ analysis.lap_times_chart_data|json_script:"lap-times-data" }}
+        {{ analysis.telemetry_chart_data|json_script:"telemetry-data" }}
+        {{ analysis.fuel_chart_data|json_script:"fuel-data" }}
         {% endif %}
 
         <br>
@@ -175,117 +181,126 @@
         const commonChartOptions = {
             maintainAspectRatio: false,
             responsive: true,
-            interaction: {
-                intersect: false,
-                mode: 'index',
-            },
+            interaction: { intersect: false, mode: 'index' },
             scales: {
-                x: {
-                    type: 'linear', // Zaman ekseni için 'linear' daha iyi performans verir
-                    ticks: { color: '#dcdcdc' },
-                    grid: { color: 'rgba(220, 220, 220, 0.1)' }
-                },
-                y: {
-                    ticks: { color: '#dcdcdc' },
-                    grid: { color: 'rgba(220, 220, 220, 0.1)' }
-                }
+                x: { type: 'linear', ticks: { color: '#dcdcdc' }, grid: { color: 'rgba(220, 220, 220, 0.1)' } },
+                y: { ticks: { color: '#dcdcdc' }, grid: { color: 'rgba(220, 220, 220, 0.1)' } }
             },
             plugins: {
-                legend: {
-                    labels: { color: '#dcdcdc' }
-                },
-                tooltip: {
-                    callbacks: {
-                        title: (ctx) => 'Zaman: ' + formatTime(ctx[0].parsed.x)
-                    }
-                }
+                legend: { labels: { color: '#dcdcdc' } },
+                tooltip: { callbacks: { title: (ctx) => 'Zaman: ' + formatTime(ctx[0].parsed.x) } }
             }
         };
 
-        // --- 1. TUR ZAMANLARI GRAFİĞİ ---
+        // --- 1. TUR ZAMANLARI GRAFİĞİ (GÜVENLİ VE ÇALIŞAN VERSİYON) ---
         try {
             const lapDataJSON = JSON.parse(document.getElementById('lap-times-data').textContent);
             if (lapDataJSON && lapDataJSON.length > 0) {
-                const lapCtx = document.getElementById('lapTimesChart').getContext('2d');
-                new Chart(lapCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: lapDataJSON.map(d => `Tur ${d.lap}`),
-                        datasets: [{
-                            label: 'Tur Zamanı (saniye)',
-                            data: lapDataJSON.map(d => d.time_ms / 1000),
-                            backgroundColor: 'rgba(233, 69, 96, 0.6)',
-                            borderColor: 'rgba(233, 69, 96, 1)'
-                        }]
-                    },
-                    options: {
-                        ...commonChartOptions,
-                        scales: {
-                            ...commonChartOptions.scales,
-                            x: { ...commonChartOptions.scales.x, type: 'category' }, // Barlar için 'category' olmalı
-                            y: { ...commonChartOptions.scales.y, ticks: { ...commonChartOptions.scales.y.ticks, callback: (val) => formatTime(val) } }
+
+                const tyreImagePaths = {
+                    16: "{% static 'dashboard/images/tyres/soft.png' %}",
+                    17: "{% static 'dashboard/images/tyres/medium.png' %}",
+                    18: "{% static 'dashboard/images/tyres/hard.png' %}",
+                    7: "{% static 'dashboard/images/tyres/inter.png' %}",
+                    8: "{% static 'dashboard/images/tyres/wet.png' %}"
+                };
+
+                const tyreImages = {};
+                const imageKeys = Object.keys(tyreImagePaths);
+                let imagesLoadedCount = 0;
+                const totalImagesToLoad = imageKeys.length;
+
+                if (totalImagesToLoad === 0) {
+                    drawLapChart();
+                } else {
+                    imageKeys.forEach(id => {
+                        const img = new Image();
+                        img.src = tyreImagePaths[id];
+                        tyreImages[id] = img;
+
+                        img.onload = () => {
+                            imagesLoadedCount++;
+                            if (imagesLoadedCount === totalImagesToLoad) {
+                                drawLapChart();
+                            }
+                        };
+                        img.onerror = () => { // Hata olsa bile devam et
+                            imagesLoadedCount++;
+                            if (imagesLoadedCount === totalImagesToLoad) {
+                                drawLapChart();
+                            }
+                        }
+                    });
+                }
+
+                function drawLapChart() {
+                    const tyreIconPlugin = {
+                        id: 'tyreIconPlugin',
+                        afterDraw: (chart) => {
+                            const ctx = chart.ctx;
+                            chart.getDatasetMeta(0).data.forEach((bar, index) => {
+                                const lapData = lapDataJSON[index];
+                                const tyreId = lapData.tyre_compound;
+                                const img = tyreImages[tyreId];
+
+                                if (img && img.complete && img.naturalHeight !== 0) {
+                                    const iconSize = 40;
+                                    const x = bar.x - (iconSize / 2);
+                                    let y = bar.y - iconSize - 5;
+                                    if (y < 5) y = 5;
+                                    ctx.drawImage(img, x, y, iconSize, iconSize);
+                                }
+                            });
+                        }
+                    };
+
+                    const lapCtx = document.getElementById('lapTimesChart').getContext('2d');
+                    new Chart(lapCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: lapDataJSON.map(d => `Tur ${d.lap}`),
+                            datasets: [{
+                                label: 'Tur Zamanı (saniye)',
+                                data: lapDataJSON.map(d => d.time_ms / 1000),
+                                backgroundColor: 'rgba(233, 69, 96, 0.6)',
+                                borderColor: 'rgba(233, 69, 96, 1)'
+                            }]
                         },
-                        plugins: { ...commonChartOptions.plugins, tooltip: { callbacks: { label: (ctx) => 'Zaman: ' + formatTime(ctx.parsed.y) } } }
-                    }
-                });
+                        options: {
+                            ...commonChartOptions,
+                            scales: {
+                                x: { ...commonChartOptions.scales.x, type: 'category' },
+                                y: { ...commonChartOptions.scales.y, beginAtZero: false, grace: '15%', ticks: { ...commonChartOptions.scales.y.ticks, callback: (val) => formatTime(val) } }
+                            },
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: { callbacks: { label: (ctx) => 'Zaman: ' + formatTime(ctx.parsed.y) } }
+                            }
+                        },
+                        plugins: [tyreIconPlugin]
+                    });
+                }
             }
         } catch (e) { console.error("Tur zamanları grafiği çizilemedi:", e); }
 
 
-        // --- 2. TELEMETRİ GRAFİKLERİ ---
+        // --- DİĞER GRAFİKLERİN KODU (DEĞİŞİKLİK YOK) ---
         try {
             const telemetryDataJSON = JSON.parse(document.getElementById('telemetry-data').textContent);
             if (telemetryDataJSON && telemetryDataJSON.length > 0) {
                 const telemetryLabels = telemetryDataJSON.map(d => d.lap_time);
-
-                // Hız Grafiği
-                new Chart(document.getElementById('speedChart').getContext('2d'), {
-                    type: 'line',
-                    data: { labels: telemetryLabels, datasets: [{ label: 'Hız (km/s)', data: telemetryDataJSON.map(d => d.speed), borderColor: 'rgb(255, 99, 132)', tension: 0.2, pointRadius: 0 }] },
-                    options: { ...commonChartOptions, scales: { ...commonChartOptions.scales, x: {...commonChartOptions.scales.x, ticks: {callback: (val) => formatTime(val)}}, y: { ...commonChartOptions.scales.y, title: { display: true, text: 'Hız (km/s)', color: '#dcdcdc' }, max: 370 } } }
-                });
-
-                // Gaz & Fren Grafiği
-                new Chart(document.getElementById('throttleBrakeChart').getContext('2d'), {
-                    type: 'line',
-                    data: {
-                        labels: telemetryLabels,
-                        datasets: [
-                            { label: 'Gaz (%)', data: telemetryDataJSON.map(d => d.throttle * 100), borderColor: 'rgb(75, 192, 192)', tension: 0.2, pointRadius: 0, fill: true, backgroundColor: 'rgba(75, 192, 192, 0.2)' },
-                            { label: 'Fren (%)', data: telemetryDataJSON.map(d => d.brake * 100), borderColor: 'rgb(255, 205, 86)', tension: 0.2, pointRadius: 0, fill: true, backgroundColor: 'rgba(255, 205, 86, 0.2)' }
-                        ]
-                    },
-                    options: { ...commonChartOptions, scales: { ...commonChartOptions.scales, x: {...commonChartOptions.scales.x, ticks: {callback: (val) => formatTime(val)}}, y: { ...commonChartOptions.scales.y, title: { display: true, text: 'Yüzde (%)', color: '#dcdcdc' }, min: 0, max: 100 } } }
-                });
-
-                // RPM Grafiği
-                new Chart(document.getElementById('rpmChart').getContext('2d'), {
-                    type: 'line',
-                    data: {
-                        labels: telemetryLabels,
-                        datasets: [{ label: 'Motor Devri (RPM)', data: telemetryDataJSON.map(d => d.rpm), borderColor: 'rgb(201, 203, 207)', tension: 0.2, pointRadius: 0 }]
-                    },
-                    options: { ...commonChartOptions, scales: { ...commonChartOptions.scales, x: {...commonChartOptions.scales.x, ticks: {callback: (val) => formatTime(val)}}, y: { ...commonChartOptions.scales.y, title: { display: true, text: 'RPM', color: '#dcdcdc' } } } }
-                });
+                new Chart(document.getElementById('speedChart').getContext('2d'), { type: 'line', data: { labels: telemetryLabels, datasets: [{ label: 'Hız (km/s)', data: telemetryDataJSON.map(d => d.speed), borderColor: 'rgb(255, 99, 132)', tension: 0.2, pointRadius: 0 }] }, options: { ...commonChartOptions, scales: { ...commonChartOptions.scales, x: { ...commonChartOptions.scales.x, ticks: { callback: (val) => formatTime(val) } }, y: { ...commonChartOptions.scales.y, title: { display: true, text: 'Hız (km/s)', color: '#dcdcdc' }, max: 370 } } } });
+                new Chart(document.getElementById('throttleBrakeChart').getContext('2d'), { type: 'line', data: { labels: telemetryLabels, datasets: [{ label: 'Gaz (%)', data: telemetryDataJSON.map(d => d.throttle * 100), borderColor: 'rgb(75, 192, 192)', tension: 0.2, pointRadius: 0, fill: true, backgroundColor: 'rgba(75, 192, 192, 0.2)' }, { label: 'Fren (%)', data: telemetryDataJSON.map(d => d.brake * 100), borderColor: 'rgb(255, 205, 86)', tension: 0.2, pointRadius: 0, fill: true, backgroundColor: 'rgba(255, 205, 86, 0.2)' }] }, options: { ...commonChartOptions, scales: { ...commonChartOptions.scales, x: { ...commonChartOptions.scales.x, ticks: { callback: (val) => formatTime(val) } }, y: { ...commonChartOptions.scales.y, title: { display: true, text: 'Yüzde (%)', color: '#dcdcdc' }, min: 0, max: 100 } } } });
+                new Chart(document.getElementById('rpmChart').getContext('2d'), { type: 'line', data: { labels: telemetryLabels, datasets: [{ label: 'Motor Devri (RPM)', data: telemetryDataJSON.map(d => d.rpm), borderColor: 'rgb(201, 203, 207)', tension: 0.2, pointRadius: 0 }] }, options: { ...commonChartOptions, scales: { ...commonChartOptions.scales, x: { ...commonChartOptions.scales.x, ticks: { callback: (val) => formatTime(val) } }, y: { ...commonChartOptions.scales.y, title: { display: true, text: 'RPM', color: '#dcdcdc' } } } } });
             }
         } catch (e) { console.error("Telemetri grafikleri çizilemedi:", e); }
 
-
-        // --- 3. YAKIT GRAFİĞİ ---
         try {
             const fuelDataJSON = JSON.parse(document.getElementById('fuel-data').textContent);
             if (fuelDataJSON && fuelDataJSON.length > 0) {
-                new Chart(document.getElementById('fuelChart').getContext('2d'), {
-                    type: 'line',
-                    data: {
-                        labels: fuelDataJSON.map(d => d.session_time),
-                        datasets: [{ label: 'Depodaki Yakıt (kg)', data: fuelDataJSON.map(d => d.fuel_in_tank), borderColor: 'rgb(153, 102, 255)', tension: 0.2, pointRadius: 0, fill: true, backgroundColor: 'rgba(153, 102, 255, 0.2)' }]
-                    },
-                    options: { ...commonChartOptions, scales: { ...commonChartOptions.scales, x: {...commonChartOptions.scales.x, ticks: {callback: (val) => formatTime(val)}}, y: { ...commonChartOptions.scales.y, title: { display: true, text: 'Yakıt (kg)', color: '#dcdcdc' } } } }
-                });
+                new Chart(document.getElementById('fuelChart').getContext('2d'), { type: 'line', data: { labels: fuelDataJSON.map(d => d.session_time), datasets: [{ label: 'Depodaki Yakıt (kg)', data: fuelDataJSON.map(d => d.fuel_in_tank), borderColor: 'rgb(153, 102, 255)', tension: 0.2, pointRadius: 0, fill: true, backgroundColor: 'rgba(153, 102, 255, 0.2)' }] }, options: { ...commonChartOptions, scales: { ...commonChartOptions.scales, x: { ...commonChartOptions.scales.x, ticks: { callback: (val) => formatTime(val) } }, y: { ...commonChartOptions.scales.y, title: { display: true, text: 'Yakıt (kg)', color: '#dcdcdc' } } } } });
             }
         } catch (e) { console.error("Yakıt grafiği çizilemedi:", e); }
-
     </script>
 </body>
 
